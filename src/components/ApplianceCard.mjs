@@ -12,7 +12,8 @@ const styles = {
     box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.6rem;
+    min-width: 0;
   `,
   name: css`
     font-size: 1.1rem;
@@ -20,23 +21,37 @@ const styles = {
     color: #111827;
   `,
   row: css`
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.75rem;
     align-items: baseline;
-    gap: 0.6rem;
     line-height: 1.4;
   `,
-  best: css`
-    font-size: 1.1rem;
+  rowBest: css`
+    font-size: 1.05rem;
+  `,
+  left: css`
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.4rem;
+    row-gap: 0.15rem;
+    overflow-wrap: anywhere;
+  `,
+  right: css`
+    text-align: right;
+    white-space: nowrap;
   `,
   star: css`
     color: #f59e0b;
     font-weight: 600;
+    margin-right: 0.25rem;
   `,
   label: css`
     color: #6b7280;
     font-size: 0.85rem;
-    width: 4.5rem;
-    flex-shrink: 0;
+    font-weight: 500;
   `,
   mode: css`
     font-weight: 600;
@@ -50,8 +65,10 @@ const styles = {
     color: #047857;
   `,
   avg: css`
+    display: block;
     color: #9ca3af;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    margin-top: 0.1rem;
   `,
   empty: css`
     color: #6b7280;
@@ -79,18 +96,26 @@ export default {
     <div :class="styles.card">
       <div :class="styles.name">{{ appliance.name }}</div>
       <template v-if="recommendations">
-        <div :class="[styles.row, styles.best]">
-          <span :class="styles.label"><span :class="styles.star">★</span> Best</span>
-          <span :class="styles.mode">{{ recommendations.overall.mode }}</span>
-          <span>at {{ formatStartTimeWithDay(recommendations.overall.start, nowMs) }}</span>
-          <span :class="styles.cost">{{ formatPounds(recommendations.overall.cost) }}</span>
-          <span :class="styles.avg">avg {{ formatPence(recommendations.overall.avgPerKwh) }}/kWh</span>
+        <div :class="[styles.row, styles.rowBest]">
+          <div :class="styles.left">
+            <span :class="styles.label"><span :class="styles.star">★</span>Best</span>
+            <span :class="styles.mode">{{ recommendations.overall.mode }}</span>
+            <span>at {{ formatStartTimeWithDay(recommendations.overall.start, nowMs) }}</span>
+          </div>
+          <div :class="styles.right">
+            <span :class="styles.cost">{{ formatPounds(recommendations.overall.cost) }}</span>
+            <span :class="styles.avg">avg {{ formatPence(recommendations.overall.avgPerKwh) }}/kWh</span>
+          </div>
         </div>
         <div :class="styles.row" v-if="recommendations.alternative">
-          <span :class="styles.label">{{ recommendations.alternativeBucket }}</span>
-          <span :class="styles.mode">{{ recommendations.alternative.mode }}</span>
-          <span>at {{ formatStartTimeWithDay(recommendations.alternative.start, nowMs) }}</span>
-          <span :class="styles.costSecondary">{{ formatPounds(recommendations.alternative.cost) }}</span>
+          <div :class="styles.left">
+            <span :class="styles.label">{{ recommendations.alternativeBucket }}</span>
+            <span :class="styles.mode">{{ recommendations.alternative.mode }}</span>
+            <span>at {{ formatStartTimeWithDay(recommendations.alternative.start, nowMs) }}</span>
+          </div>
+          <div :class="styles.right">
+            <span :class="styles.costSecondary">{{ formatPounds(recommendations.alternative.cost) }}</span>
+          </div>
         </div>
       </template>
       <div :class="styles.empty" v-else>
