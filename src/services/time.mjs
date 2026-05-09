@@ -24,6 +24,11 @@ export function ukHour(date) {
   return parseInt(ukParts(date).hour, 10);
 }
 
+export function ukHourFractional(date) {
+  const p = ukParts(date);
+  return parseInt(p.hour, 10) + parseInt(p.minute, 10) / 60;
+}
+
 export function ukDateLabel(date) {
   const p = ukParts(date);
   return `${p.day}/${p.month}`;
