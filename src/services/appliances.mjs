@@ -12,8 +12,8 @@ export const appliances = {
   washingMachine: {
     name: 'Washing machine',
     modes: [
-      { name: 'Mixed',      durationMinutes: 150, kwh: 0.80, distribution: [0.70, 0.20, 0.10] },
-      { name: '20min 3kg',  durationMinutes:  20, kwh: 0.25, distribution: [0.70, 0.20, 0.10] },
+      { name: 'Mixed',      durationMinutes: 150, kwh: 0.80, distribution: [0.75, 0.10, 0.15] },
+      { name: '20min 3kg',  durationMinutes:  20, kwh: 0.25, distribution: [0.75, 0.10, 0.15] },
     ],
     defaultMode: 'Mixed',
     showAllModesInRecommendation: false,
