@@ -1,4 +1,4 @@
-import { mkdir, cp, writeFile } from 'node:fs/promises';
+import { mkdir, cp, writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -76,6 +76,13 @@ async function main() {
 
   await mkdir(DIST, { recursive: true });
   await cp(SRC, DIST, { recursive: true });
+
+  const version = generatedAt.replace(/[-:]/g, '').replace(/\..*/, '');
+  const swPath = resolve(DIST, 'sw.js');
+  const sw = await readFile(swPath, 'utf8');
+  await writeFile(swPath, sw.replaceAll('%VERSION%', version));
+  log(`Stamped sw.js with version ${version}`);
+
   await writeFile(resolve(DIST, 'data.json'), JSON.stringify(payload));
   log(`Wrote ${resolve(DIST, 'data.json')}`);
 }
