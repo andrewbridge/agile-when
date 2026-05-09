@@ -1,4 +1,4 @@
-const CACHE = 'agile-when-v1';
+const CACHE = 'agile-when-%VERSION%';
 const ASSETS = [
   './',
   './index.html',
