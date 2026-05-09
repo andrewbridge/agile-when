@@ -19,13 +19,6 @@ const styles = {
     text-transform: uppercase;
     letter-spacing: 0.04em;
   `,
-  anchor: css`
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  `,
   body: css`
     line-height: 1.5;
     color: #111827;
@@ -58,7 +51,6 @@ export default {
     <section :class="styles.wrap">
       <div :class="styles.heading">Summary</div>
       <template v-if="text">
-        <div :class="styles.anchor">As of {{ selectedAnchor.label }}</div>
         <div :class="styles.body">{{ text }}</div>
         <div :class="styles.credit" v-if="summaryModel">via {{ summaryModel }}</div>
       </template>
