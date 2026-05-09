@@ -15,7 +15,7 @@ const DIST = resolve(ROOT, 'dist');
 const PRODUCT = process.env.PRODUCT_CODE || 'AGILE-24-10-01';
 const REGION = process.env.REGION_CODE || 'J';
 const REGION_NAME = process.env.REGION_NAME || 'South East England';
-const MODEL = process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4.6';
+const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v3.2';
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const DRY_RUN = process.env.BUILD_DRY_RUN === '1';
 
