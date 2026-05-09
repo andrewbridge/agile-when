@@ -5,9 +5,11 @@ const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 function buildPrompt({ rates, stats, generatedAt }) {
   const rateLines = rates.map((r) => `${r.from} ${r.pence.toFixed(2)}p`).join('\n');
   const anchorList = SUMMARY_ANCHORS
-    .map((a) => `- "${a.key}" — written at ${a.label} UK time`)
+    .map((a) => `- "${a.key}" — for someone reading at ${a.label} UK time`)
     .join('\n');
   return `You are an electricity-price assistant for someone on the UK Octopus Agile tariff in South East England (DNO J).
+
+The user wants a clear forward-looking steer: given the rates ahead, is it worth conserving energy and holding off, or should they go ahead and use what they need? They are not interested in commentary about rates that have already passed.
 
 Generated at: ${generatedAt}
 Stats:
@@ -18,10 +20,14 @@ Stats:
 Half-hourly rates (UTC, pence/kWh inc VAT):
 ${rateLines}
 
-Write FOUR short summaries (2-3 sentences each, plain English, no markdown). Each summary must be written as if you are producing it AT its specific anchor UK time, describing the situation as of that moment: what rates are doing right now, the cheapest upcoming slot worth waiting for, and any peaks to avoid in the hours ahead. Mention specific UK times (Europe/London) and pence values. Do NOT reference rates that are already in the past from the anchor's perspective.
-
-Anchors:
+Write FOUR short summaries (2-3 sentences each, plain English, no markdown), one per anchor:
 ${anchorList}
+
+For each summary:
+- Consider ONLY rates from that anchor time onwards. Do not mention or describe any rate that has already passed before the anchor.
+- Lead with a clear hold-off-or-go-ahead steer for the hours ahead.
+- Call out the cheapest upcoming window worth waiting for (with UK time and pence) and any peaks to avoid.
+- Do NOT use phrases like "as of HH:MM", "the current rate is", "right now", or "at the moment". Write it as forward-looking advice, not a status update.
 
 Reply with ONLY a JSON object using the anchor keys, no commentary, no markdown fences:
 {${SUMMARY_ANCHOR_KEYS.map((k) => `"${k}":"..."`).join(',')}}`;
