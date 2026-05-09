@@ -1,0 +1,14 @@
+{
+  "name": "agile-when",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Octopus Agile dashboard with appliance-aware run-time recommendations",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:dry": "BUILD_DRY_RUN=1 node scripts/build.mjs",
+    "serve": "npx --yes http-server dist -p 8080 -c-1",
+    "dev": "npx --yes http-server dist -p 8080 -c-1"
+  },
+  "license": "MIT"
+}

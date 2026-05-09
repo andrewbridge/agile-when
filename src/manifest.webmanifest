@@ -1,0 +1,10 @@
+{
+  "name": "Agile when?",
+  "short_name": "Agile",
+  "description": "Octopus Agile dashboard with appliance-aware recommendations",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#3730a3",
+  "icons": []
+}
