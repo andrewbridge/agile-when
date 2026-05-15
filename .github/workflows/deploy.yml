@@ -9,6 +9,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      no_cache:
+        description: 'Force rebuild even if data.json was already generated today'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -30,17 +35,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Build
+      - id: build
+        name: Build
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: anthropic/claude-sonnet-4.6
           REGION_CODE: J
           REGION_NAME: South East England
           PRODUCT_CODE: AGILE-24-10-01
-        run: node scripts/build.mjs
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+        run: node scripts/build.mjs ${{ inputs.no_cache && '--no-cache' || '' }}
+      - if: ${{ steps.build.outputs.skip != 'true' }}
+        uses: actions/configure-pages@v5
+      - if: ${{ steps.build.outputs.skip != 'true' }}
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-      - id: deployment
+      - if: ${{ steps.build.outputs.skip != 'true' }}
+        id: deployment
         uses: actions/deploy-pages@v4
