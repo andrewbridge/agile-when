@@ -1,4 +1,4 @@
-import { mkdir, cp, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, cp, writeFile, readFile, appendFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -18,11 +18,48 @@ const REGION_NAME = process.env.REGION_NAME || 'South East England';
 const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v3.2';
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const DRY_RUN = process.env.BUILD_DRY_RUN === '1';
+const NO_CACHE = process.argv.slice(2).includes('--no-cache') || process.env.NO_CACHE === '1' || process.env.NO_CACHE === 'true';
+const CACHE_URL = process.env.CACHE_URL || 'https://andrewbridge.github.io/agile-when/data.json';
 
 function log(...a) { console.log('[build]', ...a); }
 function warn(...a) { console.warn('[build]', ...a); }
 
+async function setStepOutput(name, value) {
+  const file = process.env.GITHUB_OUTPUT;
+  if (!file) return;
+  await appendFile(file, `${name}=${value}\n`);
+}
+
+async function isAlreadyGeneratedToday() {
+  try {
+    const res = await fetch(CACHE_URL, { cache: 'no-store' });
+    if (!res.ok) {
+      warn(`Cache check: ${CACHE_URL} returned HTTP ${res.status}`);
+      return false;
+    }
+    const cached = await res.json();
+    const generatedAt = cached?.generatedAt;
+    if (typeof generatedAt !== 'string') return false;
+    const cachedDay = generatedAt.slice(0, 10);
+    const todayDay = new Date().toISOString().slice(0, 10);
+    log(`Cache check: remote generatedAt=${generatedAt} (day ${cachedDay}); today=${todayDay}`);
+    return cachedDay === todayDay;
+  } catch (err) {
+    warn('Cache check failed:', err.message);
+    return false;
+  }
+}
+
 async function main() {
+  if (NO_CACHE) {
+    log('Cache check skipped (--no-cache)');
+  } else if (await isAlreadyGeneratedToday()) {
+    log('data.json already generated today — skipping build. Pass --no-cache to force.');
+    await setStepOutput('skip', 'true');
+    return;
+  }
+  await setStepOutput('skip', 'false');
+
   const generatedAt = new Date().toISOString();
   const periodFrom = new Date(Date.now() - 60 * 60_000).toISOString();
   const periodTo = new Date(Date.now() + 36 * 3600_000).toISOString();
