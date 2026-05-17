@@ -56,7 +56,7 @@ export default {
       <div :class="styles.unavailable" v-else>AI summary unavailable.</div>
     </section>
     <section :class="styles.wrap" v-if="weekSummary">
-      <div :class="styles.heading">Next 7 days</div>
+      <div :class="styles.heading">Next 7 days (forecast)</div>
       <div :class="styles.body">{{ weekSummary }}</div>
       <div :class="styles.credit" v-if="summaryModel">via {{ summaryModel }}</div>
     </section>

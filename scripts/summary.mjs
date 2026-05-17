@@ -63,9 +63,10 @@ ${predictedRateLines}
 
 Write a single short paragraph (2-3 sentences, plain English, no markdown).
 - Lead with a clear wait-or-go-ahead steer.
-- If a materially cheaper period appears in the forecast (>= 5p below today's cheapest published slot), name the approximate day and pence range, and make clear it is a forecast not a confirmed rate.
+- If a materially cheaper period appears in the forecast (>= 5p below today's cheapest published slot), name the approximate day and pence range directly, without hedging.
 - If no materially cheaper period exists in the forecast, say so briefly.
-- Do NOT use phrases like "right now", "at the moment", or "currently". Write it as forward-looking advice.`;
+- Do NOT use phrases like "right now", "at the moment", or "currently". Write it as forward-looking advice.
+- Do NOT add disclaimers about the data being a forecast or about prediction accuracy. The card the user sees is already labelled as a forecast, so phrases like "keep in mind this is a forecast", "not a guaranteed rate", "subject to change", "this is just a prediction" are noise. Write directly — "cheaper rates around 5p arrive Tuesday morning" — not "keep in mind this is a forecast, but cheaper rates may arrive Tuesday".`;
 }
 
 function parseJsonReply(text) {

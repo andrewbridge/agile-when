@@ -39,22 +39,11 @@ jobs:
         name: Build
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_MODEL: anthropic/claude-sonnet-4.6
-          REGION_CODE: J
-          REGION_NAME: South East England
-          PRODUCT_CODE: AGILE-24-10-01
-        run: node scripts/build.mjs ${{ inputs.no_cache && '--no-cache' || '' }}
-      - if: ${{ steps.build.outputs.skip != 'true' }}
-        name: Build test variant (deepseek-v4-flash)
-        continue-on-error: true
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: deepseek/deepseek-v4-flash
           REGION_CODE: J
           REGION_NAME: South East England
           PRODUCT_CODE: AGILE-24-10-01
-          DIST_DIR: dist/deepseek-test
-        run: node scripts/build.mjs --no-cache
+        run: node scripts/build.mjs ${{ inputs.no_cache && '--no-cache' || '' }}
       - if: ${{ steps.build.outputs.skip != 'true' }}
         uses: actions/configure-pages@v5
       - if: ${{ steps.build.outputs.skip != 'true' }}
