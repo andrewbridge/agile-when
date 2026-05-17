@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 
 import { fetchRates, computeStats, hasTomorrowEvening } from './rates.mjs';
 import { fetchPredictedWithFallback, normalisePredicted, mergeRates } from './predicted.mjs';
-import { generateSummaries } from './summary.mjs';
+import { generateSummaries, generateWeekSummary } from './summary.mjs';
 import { appliances } from '../src/services/appliances.mjs';
 import { generateCandidates } from '../src/services/recommend.mjs';
 
@@ -111,20 +111,33 @@ async function main() {
   }
 
   const mergedRates = mergeRates(rates, predictedSlots);
+  const weekStats = computeStats(mergedRates);
   const predictedSavings = computePredictedSavings(appliances, candidates, mergedRates, new Date(generatedAt).getTime());
   log(`Predicted savings: ${predictedSavings.length} alert(s)`);
 
   let summaries = null;
+  let weekSummary = null;
   let summaryModel = null;
   if (DRY_RUN || !API_KEY) {
     log('Skipping summaries (dry run or no key)');
   } else {
-    try {
-      summaries = await generateSummaries({ rates, predictedRates: predictedSlots, forecastCreatedAt, stats, generatedAt, apiKey: API_KEY, model: MODEL });
+    const [summariesResult, weekResult] = await Promise.allSettled([
+      generateSummaries({ rates, stats, generatedAt, apiKey: API_KEY, model: MODEL }),
+      generateWeekSummary({ rates, predictedRates: predictedSlots, forecastCreatedAt, realStats: stats, weekStats, generatedAt, apiKey: API_KEY, model: MODEL }),
+    ]);
+    if (summariesResult.status === 'fulfilled') {
+      summaries = summariesResult.value;
       summaryModel = MODEL;
       log('Summaries generated');
-    } catch (err) {
-      warn('Summary generation failed:', err.message);
+    } else {
+      warn('Summary generation failed:', summariesResult.reason.message);
+    }
+    if (weekResult.status === 'fulfilled') {
+      weekSummary = weekResult.value;
+      summaryModel = MODEL;
+      log('Week summary generated');
+    } else {
+      warn('Week summary generation failed:', weekResult.reason.message);
     }
   }
 
@@ -143,6 +156,7 @@ async function main() {
       error: forecastError ?? null,
     },
     summaries,
+    weekSummary,
     summaryModel,
     stats,
   };

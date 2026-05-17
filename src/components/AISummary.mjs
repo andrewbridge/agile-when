@@ -36,7 +36,7 @@ const styles = {
 
 export default {
   name: 'AISummary',
-  props: ['summaries', 'summaryModel', 'now'],
+  props: ['summaries', 'weekSummary', 'summaryModel', 'now'],
   computed: {
     selectedAnchor() {
       return pickNearestAnchor(ukHourFractional(this.now));
@@ -49,12 +49,16 @@ export default {
   },
   template: `
     <section :class="styles.wrap">
-      <div :class="styles.heading">Summary</div>
+      <div :class="styles.heading">Next 24 hours</div>
       <template v-if="text">
         <div :class="styles.body">{{ text }}</div>
-        <div :class="styles.credit" v-if="summaryModel">via {{ summaryModel }}</div>
       </template>
       <div :class="styles.unavailable" v-else>AI summary unavailable.</div>
+    </section>
+    <section :class="styles.wrap" v-if="weekSummary">
+      <div :class="styles.heading">Next 7 days</div>
+      <div :class="styles.body">{{ weekSummary }}</div>
+      <div :class="styles.credit" v-if="summaryModel">via {{ summaryModel }}</div>
     </section>
   `,
   data: () => ({ styles }),
