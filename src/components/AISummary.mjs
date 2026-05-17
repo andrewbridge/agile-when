@@ -30,7 +30,8 @@ const styles = {
   credit: css`
     color: #9ca3af;
     font-size: 0.75rem;
-    margin-top: 0.2rem;
+    margin-top: -0.7rem;
+    margin-left: 0.7rem;
   `,
 };
 
@@ -58,8 +59,8 @@ export default {
     <section :class="styles.wrap" v-if="weekSummary">
       <div :class="styles.heading">Next 7 days (forecast)</div>
       <div :class="styles.body">{{ weekSummary }}</div>
-      <div :class="styles.credit" v-if="summaryModel">via {{ summaryModel }}</div>
     </section>
+    <div :class="styles.credit" v-if="summaryModel">Summaries via {{ summaryModel }}</div>
   `,
   data: () => ({ styles }),
 };
