@@ -124,7 +124,7 @@ export default {
               :now="now"
             />
           </div>
-          <AISummary :summaries="data.summaries" :summary-model="data.summaryModel" :now="now" />
+          <AISummary :summaries="data.summaries" :week-summary="data.weekSummary" :summary-model="data.summaryModel" :now="now" />
           <RateTable :rates="data.rates" :now="now" />
         </template>
       </div>
