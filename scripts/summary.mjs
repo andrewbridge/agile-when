@@ -2,11 +2,20 @@ import { SUMMARY_ANCHORS, SUMMARY_ANCHOR_KEYS } from '../src/services/anchors.mj
 
 const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
-function buildPrompt({ rates, stats, generatedAt }) {
+function buildPrompt({ rates, predictedRates, forecastCreatedAt, stats, generatedAt }) {
   const rateLines = rates.map((r) => `${r.from} ${r.pence.toFixed(2)}p`).join('\n');
   const anchorList = SUMMARY_ANCHORS
     .map((a) => `- "${a.key}" — for someone reading at ${a.label} UK time`)
     .join('\n');
+
+  const forecastBlock = predictedRates?.length
+    ? `\nForecast (AgilePredict ML model, generated ${forecastCreatedAt}, expected values only — treat as indicative):
+${predictedRates.slice(0, 7 * 48).map((r) => `${r.from} ~${r.pence.toFixed(2)}p`).join('\n')}
+
+These are predictions, not Octopus-published rates. Accuracy degrades past ~3 days.
+If a materially cheaper window (>= 5p below the cheapest published slot above) appears within 1–3 days of the forecast, you may mention that deferring non-urgent loads could be worthwhile — but make clear it is a forecast, not a confirmed rate.\n`
+    : '';
+
   return `You are an electricity-price assistant for someone on the UK Octopus Agile tariff in South East England (DNO J).
 
 The user wants a clear forward-looking steer: given the rates ahead, is it worth conserving energy and holding off, or should they go ahead and use what they need? They are not interested in commentary about rates that have already passed.
@@ -19,7 +28,7 @@ Stats:
 
 Half-hourly rates (UTC, pence/kWh inc VAT):
 ${rateLines}
-
+${forecastBlock}
 Write FOUR short summaries (2-3 sentences each, plain English, no markdown), one per anchor:
 ${anchorList}
 

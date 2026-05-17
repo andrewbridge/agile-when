@@ -69,6 +69,26 @@ const styles = {
     color: #991b1b;
     & > * { color: #991b1b; }
   `,
+  slotPredicted: css`
+    opacity: 0.5;
+    border-style: dashed;
+    border-color: #9ca3af;
+    background-image: repeating-linear-gradient(
+      45deg, transparent, transparent 5px,
+      rgba(0,0,0,0.04) 5px, rgba(0,0,0,0.04) 10px);
+  `,
+  headingRow: css`
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  `,
+  forecastCredit: css`
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: #9ca3af;
+    text-transform: none;
+    letter-spacing: 0;
+  `,
 };
 
 export default {
@@ -80,6 +100,9 @@ export default {
     },
     upcomingRates() {
       return this.rates.filter((r) => new Date(r.to).getTime() > this.now.getTime());
+    },
+    hasPredicted() {
+      return this.upcomingRates.some((r) => r.predicted);
     },
     days() {
       const groups = new Map();
@@ -110,6 +133,7 @@ export default {
       else if (rate.pence > 30) classes.push(styles.slotPeak);
       else if (rate.pence < 15) classes.push(styles.slotCheap);
       if (isCurrent) classes.push(styles.slotCurrent);
+      if (rate.predicted) classes.push(styles.slotPredicted);
       return classes;
     },
     slotTime(rate) {
@@ -119,11 +143,14 @@ export default {
   },
   template: `
     <section :class="styles.wrap">
-      <div :class="styles.heading">Rates</div>
+      <div :class="styles.headingRow">
+        <div :class="styles.heading">Rates</div>
+        <div v-if="hasPredicted" :class="styles.forecastCredit">Faded = AgilePredict forecast</div>
+      </div>
       <div v-for="d in days" :key="d.label" :class="styles.daySection">
         <div :class="styles.dayLabel">{{ d.label }}</div>
         <div :class="styles.grid">
-          <div v-for="r in d.rates" :key="r.from" :class="slotClasses(r)">
+          <div v-for="r in d.rates" :key="r.from" :class="slotClasses(r)" :title="r.predicted ? 'AgilePredict forecast' : null">
             <span :class="styles.slotTime">{{ slotTime(r) }}</span>
             <span :class="styles.slotPence">{{ formatPence(r.pence) }}</span>
           </div>

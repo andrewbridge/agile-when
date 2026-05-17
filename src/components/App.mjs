@@ -1,6 +1,7 @@
 import { css } from '../utilities/css.mjs';
 import { store } from '../services/data.mjs';
 import { appliances, applianceOrder } from '../services/appliances.mjs';
+import { ukDateLabel, ukHour } from '../services/time.mjs';
 import Header from './Header.mjs';
 import ApplianceCard from './ApplianceCard.mjs';
 import AISummary from './AISummary.mjs';
@@ -44,6 +45,17 @@ const styles = {
     border-radius: 0.5rem;
     font-size: 0.85rem;
   `,
+  forecastBanner: css`
+    background: #dbeafe;
+    color: #1e3a8a;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+  `,
+  forecastList: css`
+    margin: 0.25rem 0 0 1.1rem;
+    padding: 0;
+  `,
 };
 
 export default {
@@ -67,8 +79,22 @@ export default {
     },
     isStale() {
       if (!this.data?.generatedAt) return false;
-      const ageMs = this.now.getTime() - new Date(this.data.generatedAt).getTime();
-      return ageMs > 14 * 3600_000;
+      // Only warn after 7pm UK time if the data wasn't generated today (UK date).
+      if (ukHour(this.now) < 19) return false;
+      return ukDateLabel(new Date(this.data.generatedAt)) !== ukDateLabel(this.now);
+    },
+    predictedSavings() {
+      return this.data?.predictedSavings || [];
+    },
+  },
+  methods: {
+    daysLabel(n) {
+      if (n <= 0) return 'today';
+      if (n === 1) return 'tomorrow';
+      return `in ${n} days`;
+    },
+    formatDay(iso) {
+      return ukDateLabel(new Date(iso));
     },
   },
   template: `
@@ -79,7 +105,15 @@ export default {
         <div v-else-if="error" :class="styles.error">Couldn't load data: {{ error }}</div>
         <template v-else-if="data">
           <div v-if="isStale" :class="styles.staleBanner">
-            Data is more than 14 hours old. Refresh the page for the latest rates.
+            Today's rates haven't loaded yet. Refresh the page to check for the latest data.
+          </div>
+          <div v-if="predictedSavings.length" :class="styles.forecastBanner">
+            <strong>Cheaper windows forecast ahead</strong>
+            <ul :class="styles.forecastList">
+              <li v-for="s in predictedSavings" :key="s.applianceId">
+                {{ s.name }} — save ~{{ s.savingPence }}p {{ daysLabel(s.daysAhead) }} ({{ formatDay(s.startIso) }}, forecast)
+              </li>
+            </ul>
           </div>
           <div :class="styles.cards">
             <ApplianceCard
