@@ -11,7 +11,7 @@ import { generateCandidates } from '../src/services/recommend.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const SRC = resolve(ROOT, 'src');
-const DIST = resolve(ROOT, 'dist');
+const DIST = resolve(ROOT, process.env.DIST_DIR || 'dist');
 
 const PRODUCT = process.env.PRODUCT_CODE || 'AGILE-24-10-01';
 const REGION = process.env.REGION_CODE || 'J';
