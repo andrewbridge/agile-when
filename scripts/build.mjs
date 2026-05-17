@@ -16,7 +16,7 @@ const DIST = resolve(ROOT, process.env.DIST_DIR || 'dist');
 const PRODUCT = process.env.PRODUCT_CODE || 'AGILE-24-10-01';
 const REGION = process.env.REGION_CODE || 'J';
 const REGION_NAME = process.env.REGION_NAME || 'South East England';
-const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v3.2';
+const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4-flash';
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const DRY_RUN = process.env.BUILD_DRY_RUN === '1';
 const NO_CACHE = process.argv.slice(2).includes('--no-cache') || process.env.NO_CACHE === '1' || process.env.NO_CACHE === 'true';
