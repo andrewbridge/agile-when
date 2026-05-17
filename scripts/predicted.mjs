@@ -49,10 +49,13 @@ export function normalisePredicted(raw) {
 }
 
 export function mergeRates(realRates, predictedSlots) {
-  const realFromSet = new Set(realRates.map((r) => r.from));
+  if (realRates.length === 0) {
+    return [...predictedSlots].sort((a, b) => new Date(a.from) - new Date(b.from));
+  }
+  const lastRealEndMs = Math.max(...realRates.map((r) => new Date(r.to).getTime()));
   const merged = [
     ...realRates,
-    ...predictedSlots.filter((s) => !realFromSet.has(s.from)),
+    ...predictedSlots.filter((s) => new Date(s.from).getTime() >= lastRealEndMs),
   ];
   merged.sort((a, b) => new Date(a.from) - new Date(b.from));
   return merged;
