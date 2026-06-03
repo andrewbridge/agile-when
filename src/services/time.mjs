@@ -7,6 +7,7 @@ function ukParts(date) {
   if (cached) return cached;
   const fmt = new Intl.DateTimeFormat('en-GB', {
     timeZone: UK_TZ,
+    weekday: 'short',
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', hour12: false,
   });
@@ -32,6 +33,10 @@ export function ukHourFractional(date) {
 export function ukDateLabel(date) {
   const p = ukParts(date);
   return `${p.day}/${p.month}`;
+}
+
+export function ukDayName(date) {
+  return ukParts(date).weekday;
 }
 
 export function ukTime(date) {

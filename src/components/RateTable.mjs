@@ -1,5 +1,5 @@
 import { css } from '../utilities/css.mjs';
-import { ukTime, ukDayKey, ukDateLabel, currentSlotStart } from '../services/time.mjs';
+import { ukTime, ukDayKey, ukDateLabel, ukDayName, currentSlotStart } from '../services/time.mjs';
 import { formatPence } from '../utilities/format.mjs';
 
 const styles = {
@@ -121,9 +121,9 @@ export default {
       const tomorrowDate = new Date(this.now.getTime() + 24 * 3600_000);
       const tomorrow = ukDayKey(tomorrowDate);
       const k = ukDayKey(date);
-      if (k === today) return `Today (${ukDateLabel(date)})`;
-      if (k === tomorrow) return `Tomorrow (${ukDateLabel(date)})`;
-      return ukDateLabel(date);
+      if (k === today) return `Today (${ukDayName(date)} ${ukDateLabel(date)})`;
+      if (k === tomorrow) return `Tomorrow (${ukDayName(date)} ${ukDateLabel(date)})`;
+      return `${ukDayName(date)} ${ukDateLabel(date)}`;
     },
     slotClasses(rate) {
       const fromMs = new Date(rate.from).getTime();
