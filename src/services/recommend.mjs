@@ -66,6 +66,19 @@ export function generateCandidates(appliancesObj, rates) {
   return result;
 }
 
+export function pickBestPerMode(candidates, app, nowMs) {
+  const eligible = candidates.filter((c) => new Date(c.start).getTime() >= nowMs);
+  const result = [];
+  for (const mode of app.modes) {
+    const forMode = eligible.filter((c) => c.mode === mode.name);
+    if (forMode.length === 0) continue;
+    const best = forMode.reduce((a, b) => (b.cost < a.cost ? b : a));
+    result.push(best);
+  }
+  result.sort((a, b) => a.cost - b.cost);
+  return result;
+}
+
 export function pickRecommendations(candidates, app, nowMs, ukHourFn) {
   const eligible = candidates.filter((c) => new Date(c.start).getTime() >= nowMs);
   const filteredByMode = app.showAllModesInRecommendation
