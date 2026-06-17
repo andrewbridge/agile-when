@@ -73,14 +73,22 @@ export function pickBestPerMode(candidates, app, nowMs) {
     const forMode = eligible.filter((c) => c.mode === mode.name);
     if (forMode.length === 0) continue;
     const best = forMode.reduce((a, b) => (b.cost < a.cost ? b : a));
-    result.push(best);
+    result.push({ ...best, maintenance: Boolean(mode.maintenance) });
   }
-  result.sort((a, b) => a.cost - b.cost);
+  // Keep maintenance modes (e.g. cleaning cycles) listed but always below usable
+  // modes, so they never take the top "best" slot.
+  result.sort((a, b) => {
+    if (a.maintenance !== b.maintenance) return a.maintenance ? 1 : -1;
+    return a.cost - b.cost;
+  });
   return result;
 }
 
 export function pickRecommendations(candidates, app, nowMs, ukHourFn) {
-  const eligible = candidates.filter((c) => new Date(c.start).getTime() >= nowMs);
+  const maintenanceModes = new Set(app.modes.filter((m) => m.maintenance).map((m) => m.name));
+  const eligible = candidates.filter(
+    (c) => new Date(c.start).getTime() >= nowMs && !maintenanceModes.has(c.mode),
+  );
   const filteredByMode = app.showAllModesInRecommendation
     ? eligible
     : eligible.filter((c) => c.mode === app.defaultMode);

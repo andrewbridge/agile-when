@@ -2,9 +2,10 @@ export const appliances = {
   dishwasher: {
     name: 'Dishwasher',
     modes: [
-      { name: 'Eco',     durationMinutes: 225, kwh: 0.90, distribution: [0.60, 0.25, 0.15] },
-      { name: 'Auto',    durationMinutes: 135, kwh: 0.95, distribution: [0.60, 0.25, 0.15] },
-      { name: 'Express', durationMinutes:  60, kwh: 1.10, distribution: [0.60, 0.25, 0.15] },
+      { name: 'Eco',          durationMinutes: 225, kwh: 0.90, distribution: [0.60, 0.25, 0.15] },
+      { name: 'Auto',         durationMinutes: 135, kwh: 0.95, distribution: [0.60, 0.25, 0.15] },
+      { name: 'Express',      durationMinutes:  60, kwh: 1.10, distribution: [0.60, 0.25, 0.15] },
+      { name: 'Machine Care', durationMinutes: 130, kwh: 1.55, distribution: [0.60, 0.25, 0.15], maintenance: true },
     ],
     defaultMode: 'Eco',
     showAllModesInRecommendation: true,
