@@ -1,5 +1,5 @@
 import { css } from '../utilities/css.mjs';
-import { pickRecommendations, pickBestPerMode } from '../services/recommend.mjs';
+import { pickRecommendations, pickBestPerMode, findCandidateAt } from '../services/recommend.mjs';
 import { ukHour } from '../services/time.mjs';
 import { formatPounds, formatStartTimeWithDay, formatPence } from '../utilities/format.mjs';
 
@@ -145,6 +145,19 @@ const styles = {
     font-size: 0.78rem;
     margin-top: 0.1rem;
   `,
+  compareDeltaUp: css`
+    display: block;
+    color: #b45309;
+    font-size: 0.78rem;
+    margin-top: 0.1rem;
+  `,
+  compareDeltaSame: css`
+    display: block;
+    color: #047857;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-top: 0.1rem;
+  `,
   empty: css`
     color: #6b7280;
     font-style: italic;
@@ -154,7 +167,7 @@ const styles = {
 
 export default {
   name: 'ApplianceCard',
-  props: ['appliance', 'candidates', 'now'],
+  props: ['appliance', 'candidates', 'now', 'compareAtMs'],
   computed: {
     recommendations() {
       if (!this.candidates || this.candidates.length === 0) return null;
@@ -167,6 +180,19 @@ export default {
     },
     hasMultipleModes() {
       return (this.appliance.modes?.length || 0) > 1;
+    },
+    compareCandidate() {
+      if (!this.compareAtMs || !this.recommendations) return null;
+      return findCandidateAt(this.candidates, this.recommendations.overall.mode, this.compareAtMs);
+    },
+    compareDelta() {
+      if (!this.compareCandidate) return null;
+      const deltaPence = this.compareCandidate.cost - this.recommendations.overall.cost;
+      const isBest = deltaPence <= 0.005;
+      return {
+        isBest,
+        label: isBest ? 'this is already the best time' : `+${formatPounds(deltaPence)} vs its best time`,
+      };
     },
   },
   methods: {
@@ -214,6 +240,18 @@ export default {
             <span :class="styles.costSecondary">{{ formatPounds(recommendations.alternative.cost) }}</span>
           </div>
         </div>
+        <div :class="styles.row" v-if="compareAtMs && compareCandidate">
+          <div :class="styles.left">
+            <span :class="styles.label">Your time</span>
+            <span :class="styles.mode">{{ recommendations.overall.mode }}</span>
+            <span>at {{ formatStartTimeWithDay(compareCandidate.start, nowMs) }}</span>
+          </div>
+          <div :class="styles.right">
+            <span :class="styles.costSecondary">{{ formatPounds(compareCandidate.cost) }}</span>
+            <span :class="compareDelta.isBest ? styles.compareDeltaSame : styles.compareDeltaUp">{{ compareDelta.label }}</span>
+          </div>
+        </div>
+        <div :class="styles.empty" v-else-if="compareAtMs">No rate data for that time yet.</div>
       </template>
       <div :class="styles.empty" v-else>
         No upcoming runs in available data.
