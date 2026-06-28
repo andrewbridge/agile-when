@@ -194,6 +194,25 @@ export default {
         label: isBest ? 'this is already the best time' : `+${formatPounds(deltaPence)} vs its best time`,
       };
     },
+    modeCompareInfo() {
+      if (!this.compareAtMs) return null;
+      const map = new Map();
+      for (const item of this.modeBestTimes) {
+        const candidate = findCandidateAt(this.candidates, item.mode, this.compareAtMs);
+        if (!candidate) {
+          map.set(item.mode, null);
+          continue;
+        }
+        const deltaPence = candidate.cost - item.cost;
+        const isBest = deltaPence <= 0.005;
+        map.set(item.mode, {
+          candidate,
+          isBest,
+          label: isBest ? 'this is already the best time' : `+${formatPounds(deltaPence)} vs its best time`,
+        });
+      }
+      return map;
+    },
   },
   methods: {
     formatPounds,
@@ -272,6 +291,13 @@ export default {
             <div :class="styles.right">
               <span :class="styles.cost">{{ formatPounds(item.cost) }}</span>
               <span :class="styles.avg">avg {{ formatPence(item.avgPerKwh) }}/kWh</span>
+              <template v-if="modeCompareInfo">
+                <span
+                  v-if="modeCompareInfo.get(item.mode)"
+                  :class="modeCompareInfo.get(item.mode).isBest ? styles.compareDeltaSame : styles.compareDeltaUp"
+                >Your time {{ formatPounds(modeCompareInfo.get(item.mode).candidate.cost) }} — {{ modeCompareInfo.get(item.mode).label }}</span>
+                <span v-else :class="styles.avg">No rate data for your time</span>
+              </template>
             </div>
           </div>
         </div>

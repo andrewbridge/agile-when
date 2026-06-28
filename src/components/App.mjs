@@ -151,6 +151,12 @@ export default {
     },
   },
   methods: {
+    toggleCompare() {
+      if (!this.compareMode && !this.compareAtLocal) {
+        this.compareAtLocal = this.compareMin;
+      }
+      this.compareMode = !this.compareMode;
+    },
     daysLabel(n) {
       if (n <= 0) return 'today';
       if (n === 1) return 'tomorrow';
@@ -179,7 +185,7 @@ export default {
             </ul>
           </div>
           <div :class="styles.compareBar">
-            <button type="button" :class="styles.compareToggle" @click="compareMode = !compareMode">
+            <button type="button" :class="styles.compareToggle" @click="toggleCompare">
               {{ compareMode ? 'Hide time comparison' : 'Compare a time' }}
             </button>
             <label v-if="compareMode" :class="styles.compareLabel">
