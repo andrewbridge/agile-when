@@ -1,11 +1,16 @@
 import { css } from '../utilities/css.mjs';
 import { store } from '../services/data.mjs';
 import { appliances, applianceOrder } from '../services/appliances.mjs';
-import { ukDateLabel, ukHour } from '../services/time.mjs';
+import { ukDateLabel, ukHour, currentSlotStart } from '../services/time.mjs';
 import Header from './Header.mjs';
 import ApplianceCard from './ApplianceCard.mjs';
 import AISummary from './AISummary.mjs';
 import RateTable from './RateTable.mjs';
+
+function toDatetimeLocalValue(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 const styles = {
   shell: css`
@@ -56,6 +61,41 @@ const styles = {
     margin: 0.25rem 0 0 1.1rem;
     padding: 0;
   `,
+  compareBar: css`
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  `,
+  compareToggle: css`
+    appearance: none;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #3730a3;
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    &:hover {
+      background: #e0e7ff;
+    }
+  `,
+  compareLabel: css`
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #4b5563;
+  `,
+  compareInput: css`
+    border: 1px solid #d1d5db;
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: #111827;
+  `,
 };
 
 export default {
@@ -86,8 +126,37 @@ export default {
     predictedSavings() {
       return this.data?.predictedSavings || [];
     },
+    compareMin() {
+      return toDatetimeLocalValue(currentSlotStart(this.now));
+    },
+    compareMax() {
+      // Bound by the latest precomputed candidate, not data.rates (which
+      // extends days further into the predicted/forecast-only period that
+      // candidates don't cover), so the picker never offers a time with no
+      // data behind it.
+      let maxMs = null;
+      for (const item of this.appliancesList) {
+        for (const c of item.candidates) {
+          const ms = new Date(c.start).getTime();
+          if (maxMs === null || ms > maxMs) maxMs = ms;
+        }
+      }
+      return maxMs === null ? null : toDatetimeLocalValue(new Date(maxMs));
+    },
+    compareAtMs() {
+      if (!this.compareAtLocal) return null;
+      const ms = new Date(this.compareAtLocal).getTime();
+      if (Number.isNaN(ms)) return null;
+      return currentSlotStart(new Date(ms)).getTime();
+    },
   },
   methods: {
+    toggleCompare() {
+      if (!this.compareMode && !this.compareAtLocal) {
+        this.compareAtLocal = this.compareMin;
+      }
+      this.compareMode = !this.compareMode;
+    },
     daysLabel(n) {
       if (n <= 0) return 'today';
       if (n === 1) return 'tomorrow';
@@ -115,6 +184,21 @@ export default {
               </li>
             </ul>
           </div>
+          <div :class="styles.compareBar">
+            <button type="button" :class="styles.compareToggle" @click="toggleCompare">
+              {{ compareMode ? 'Hide time comparison' : 'Compare a time' }}
+            </button>
+            <label v-if="compareMode" :class="styles.compareLabel">
+              Running at
+              <input
+                type="datetime-local"
+                v-model="compareAtLocal"
+                :min="compareMin"
+                :max="compareMax"
+                :class="styles.compareInput"
+              />
+            </label>
+          </div>
           <div :class="styles.cards">
             <ApplianceCard
               v-for="item in appliancesList"
@@ -122,6 +206,7 @@ export default {
               :appliance="item.appliance"
               :candidates="item.candidates"
               :now="now"
+              :compare-at-ms="compareMode ? compareAtMs : null"
             />
           </div>
           <AISummary :summaries="data.summaries" :week-summary="data.weekSummary" :summary-model="data.summaryModel" :now="now" />
@@ -130,5 +215,5 @@ export default {
       </div>
     </div>
   `,
-  data: () => ({ styles }),
+  data: () => ({ styles, compareMode: false, compareAtLocal: '' }),
 };

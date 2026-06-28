@@ -84,6 +84,12 @@ export function pickBestPerMode(candidates, app, nowMs) {
   return result;
 }
 
+export function findCandidateAt(candidates, mode, atMs) {
+  return candidates.find(
+    (c) => c.mode === mode && new Date(c.start).getTime() === atMs,
+  ) ?? null;
+}
+
 export function pickRecommendations(candidates, app, nowMs, ukHourFn) {
   const maintenanceModes = new Set(app.modes.filter((m) => m.maintenance).map((m) => m.name));
   const eligible = candidates.filter(
