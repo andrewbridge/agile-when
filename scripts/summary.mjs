@@ -57,7 +57,7 @@ Published Octopus rates for the next 24 hours (UTC, pence/kWh inc VAT):
 ${realRateLines}
 Next-24-hour stats: min ${realStats.minPence}p, max ${realStats.maxPence}p, avg ${realStats.avgPence}p
 
-AgilePredict 7-day forecast (generated ${forecastCreatedAt}, indicative only — accuracy degrades past ~3 days, treat as a guide not a guarantee):
+Averaged 7-day price forecast (generated ${forecastCreatedAt}, indicative only — accuracy degrades past ~3 days, treat as a guide not a guarantee):
 ${predictedRateLines}
 7-day stats (real + forecast combined): min ${weekStats.minPence}p, max ${weekStats.maxPence}p, avg ${weekStats.avgPence}p
 

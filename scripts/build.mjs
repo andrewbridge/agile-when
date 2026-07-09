@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import { fetchRates, computeStats, hasTomorrowEvening } from './rates.mjs';
-import { fetchPredictedWithFallback, normalisePredicted, mergeRates } from './predicted.mjs';
+import { fetchAllPredicted, mergeRates } from './predicted.mjs';
 import { generateSummaries, generateWeekSummary } from './summary.mjs';
 import { appliances } from '../src/services/appliances.mjs';
 import { generateCandidates } from '../src/services/recommend.mjs';
@@ -91,6 +91,7 @@ async function main() {
   let predictedSlots = [];
   let forecastCreatedAt = null;
   let forecastError = null;
+  let forecastSources = [];
   if (DRY_RUN) {
     predictedSlots = generateFixturePredictedSlots(rates);
     forecastCreatedAt = new Date().toISOString();
@@ -98,15 +99,23 @@ async function main() {
   } else if (PREDICT_DISABLE) {
     log('Predicted rates disabled (PREDICT_DISABLE=1)');
   } else {
-    try {
-      const raw = await fetchPredictedWithFallback({ region: REGION, days: 7 });
-      const normalised = normalisePredicted(raw);
-      predictedSlots = normalised.slots;
-      forecastCreatedAt = normalised.forecastCreatedAt;
-      log(`Got ${predictedSlots.length} predicted slots (forecast created ${forecastCreatedAt})`);
-    } catch (err) {
-      forecastError = err.message;
-      warn('AgilePredict fetch failed:', err.message);
+    const result = await fetchAllPredicted({ region: REGION, days: 7 });
+    predictedSlots = result.slots;
+    forecastCreatedAt = result.createdAt;
+    forecastSources = result.sources;
+    for (const source of forecastSources) {
+      if (source.ok) {
+        log(`${source.name}: ${source.slotCount} forecast slots`);
+      } else {
+        warn(`${source.name} forecast fetch failed:`, source.error);
+      }
+    }
+    const okSources = forecastSources.filter((s) => s.ok);
+    if (okSources.length === 0) {
+      forecastError = forecastSources.map((s) => `${s.name}: ${s.error}`).join(' | ');
+      warn('All forecast sources failed — no predicted rates.');
+    } else {
+      log(`Averaged ${predictedSlots.length} predicted slots from ${okSources.length}/${forecastSources.length} source(s) (forecast created ${forecastCreatedAt})`);
     }
   }
 
@@ -149,7 +158,8 @@ async function main() {
     candidates,
     predictedSavings,
     forecast: {
-      source: 'agilepredict',
+      source: 'averaged',
+      sources: forecastSources,
       createdAt: forecastCreatedAt,
       days: 7,
       slotCount: predictedSlots.length,

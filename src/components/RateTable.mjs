@@ -88,6 +88,20 @@ const styles = {
     color: #9ca3af;
     text-transform: none;
     letter-spacing: 0;
+    text-align: right;
+    & > summary {
+      cursor: pointer;
+      list-style-position: inside;
+    }
+  `,
+  forecastSources: css`
+    margin-top: 0.25rem;
+    max-width: 18rem;
+    line-height: 1.4;
+    & a {
+      color: #6b7280;
+      text-decoration: underline;
+    }
   `,
 };
 
@@ -145,12 +159,20 @@ export default {
     <section :class="styles.wrap">
       <div :class="styles.headingRow">
         <div :class="styles.heading">Rates</div>
-        <div v-if="hasPredicted" :class="styles.forecastCredit">Faded = AgilePredict forecast</div>
+        <details v-if="hasPredicted" :class="styles.forecastCredit">
+          <summary>Faded = forecast</summary>
+          <div :class="styles.forecastSources">
+            Forecast prices are averaged from
+            <a href="https://agilepredict.com" target="_blank" rel="noopener">AgilePredict</a>,
+            <a href="https://agileforecast.co.uk" target="_blank" rel="noopener">AgileForecast</a>
+            and <a href="https://x2r.uk" target="_blank" rel="noopener">X2R</a>.
+          </div>
+        </details>
       </div>
       <div v-for="d in days" :key="d.label" :class="styles.daySection">
         <div :class="styles.dayLabel">{{ d.label }}</div>
         <div :class="styles.grid">
-          <div v-for="r in d.rates" :key="r.from" :class="slotClasses(r)" :title="r.predicted ? 'AgilePredict forecast' : null">
+          <div v-for="r in d.rates" :key="r.from" :class="slotClasses(r)" :title="r.predicted ? 'Forecast' : null">
             <span :class="styles.slotTime">{{ slotTime(r) }}</span>
             <span :class="styles.slotPence">{{ formatPence(r.pence) }}</span>
           </div>
