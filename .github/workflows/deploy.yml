@@ -10,8 +10,8 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      no_cache:
-        description: 'Force rebuild even if data.json was already generated today'
+      force:
+        description: 'Build and deploy even if no newer rate data is available'
         type: boolean
         default: false
 
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
       - id: build
         name: Build
         env:
@@ -43,7 +43,12 @@ jobs:
           REGION_CODE: J
           REGION_NAME: South East England
           PRODUCT_CODE: AGILE-24-10-01
-        run: node scripts/build.mjs ${{ inputs.no_cache && '--no-cache' || '' }}
+          # Only the last cron of the day sets this, so a publication window
+          # that passed with no new rates fails loudly instead of skipping
+          # quietly four times over.
+          LAST_ATTEMPT: ${{ github.event.schedule == '5 19 * * *' }}
+        # A push is a code change that should ship regardless of rate data.
+        run: node scripts/build.mjs ${{ (inputs.force || github.event_name == 'push') && '--force' || '' }}
       - if: ${{ steps.build.outputs.skip != 'true' }}
         uses: actions/configure-pages@v5
       - if: ${{ steps.build.outputs.skip != 'true' }}
