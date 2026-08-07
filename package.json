@@ -7,8 +7,12 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:dry": "BUILD_DRY_RUN=1 node scripts/build.mjs",
+    "test": "node --test \"scripts/*.test.mjs\"",
     "serve": "npx --yes http-server dist -p 8080 -c-1",
     "dev": "npx --yes http-server dist -p 8080 -c-1"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "license": "MIT"
 }

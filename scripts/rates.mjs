@@ -41,27 +41,48 @@ export function computeStats(rates) {
   };
 }
 
-export function hasTomorrowEvening(rates) {
-  if (rates.length === 0) return false;
-  const fmt = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false,
-  });
-  const now = new Date();
-  const tomorrowUk = new Date(now.getTime() + 24 * 3600_000);
-  const partsOf = (d) => {
-    const o = {};
-    for (const p of fmt.formatToParts(d)) if (p.type !== 'literal') o[p.type] = p.value;
-    return o;
-  };
-  const tp = partsOf(tomorrowUk);
-  // Look for a slot whose UK-local time is tomorrow at 22:30 or later.
-  return rates.some((r) => {
-    const p = partsOf(new Date(r.from));
-    if (p.year !== tp.year || p.month !== tp.month || p.day !== tp.day) return false;
-    const h = parseInt(p.hour, 10);
-    const m = parseInt(p.minute, 10);
-    return h * 60 + m >= 22 * 60 + 30;
-  });
+// How far real (non-forecast) rate data reaches, as epoch ms; 0 when there is
+// none. Accepts either a fresh fetchRates result or the merged `rates` array
+// from a published data.json, where forecast slots carry `predicted: true`.
+export function lastRealSlotEnd(rates) {
+  if (!Array.isArray(rates)) return 0;
+  let last = 0;
+  for (const r of rates) {
+    if (r?.predicted) continue;
+    const ms = new Date(r?.to).getTime();
+    if (Number.isFinite(ms) && ms > last) last = ms;
+  }
+  return last;
+}
+
+const iso = (ms) => new Date(ms).toISOString();
+
+// Decide whether a freshly fetched set of rates is worth publishing, by asking
+// whether it reaches further than what the live site already has.
+//
+// Octopus publishes each day's Agile rates in an afternoon window, so "has
+// anything new landed?" is the only question the scheduled runs can usefully
+// retry on. Asking instead for a specific calendar day (as this build used to)
+// fails for hours at a stretch through no fault of the build — every run
+// between midnight and the publication window is demanding data that cannot
+// exist yet.
+export function decideBuild({ force, publishedOk, publishedEndMs, fetchedEndMs, nowMs }) {
+  if (!fetchedEndMs) {
+    // Not "nothing new" but "nothing at all" — a real breakage worth failing on,
+    // and never something to overwrite good published data with.
+    return { build: false, fatal: true, reason: 'Octopus returned no usable rate data' };
+  }
+  if (force) {
+    return { build: true, reason: 'Forced build — freshness gate skipped' };
+  }
+  if (!publishedOk) {
+    return { build: true, reason: 'No published data.json to compare against — building' };
+  }
+  if (fetchedEndMs > publishedEndMs) {
+    return { build: true, reason: `Coverage extended: live data ends ${iso(publishedEndMs)}, fetched data ends ${iso(fetchedEndMs)}` };
+  }
+  if (publishedEndMs <= nowMs) {
+    return { build: true, reason: `Live data is exhausted (ends ${iso(publishedEndMs)}) — rebuilding rather than leaving the site stale` };
+  }
+  return { build: false, reason: `No newer rate data — live data already covers to ${iso(publishedEndMs)}` };
 }
