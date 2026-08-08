@@ -2,7 +2,8 @@ import { mkdir, cp, writeFile, readFile, appendFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { fetchRates, computeStats, lastRealSlotEnd, decideBuild } from './rates.mjs';
+import { fetchRates, computeStats, lastRealSlotEnd, decideBuild, coverageHoursAhead } from './rates.mjs';
+import { resolveDataMode } from './options.mjs';
 import { fetchAllPredicted, mergeRates } from './predicted.mjs';
 import { generateSummaries, generateWeekSummary } from './summary.mjs';
 import { appliances } from '../src/services/appliances.mjs';
@@ -20,11 +21,6 @@ const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4-flash';
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const DRY_RUN = process.env.BUILD_DRY_RUN === '1';
 const ARGV = process.argv.slice(2);
-// --no-cache / NO_CACHE are kept as aliases of --force: under the coverage gate
-// "ignore the cache" and "ignore the freshness check" are the same intent.
-const FORCE = ARGV.includes('--force') || ARGV.includes('--no-cache')
-  || process.env.FORCE === '1' || process.env.FORCE === 'true'
-  || process.env.NO_CACHE === '1' || process.env.NO_CACHE === 'true';
 // Set by the final scheduled run of the day, so a publication window that
 // passed without any new rates still fails loudly instead of skipping forever.
 const LAST_ATTEMPT = process.env.LAST_ATTEMPT === '1' || process.env.LAST_ATTEMPT === 'true';
@@ -61,6 +57,22 @@ async function readPublished() {
 }
 
 async function main() {
+  const dataMode = resolveDataMode(ARGV, process.env);
+  log(`Data mode: ${dataMode}`);
+
+  // Reuse: ship the code with the data that is already published. Nothing
+  // upstream is contacted, so a code deploy cannot be blocked by an Octopus or
+  // OpenRouter outage. Falling back to a full generation keeps a first-ever
+  // deploy (or a Pages hiccup) from publishing a site with no data.
+  if (!DRY_RUN && dataMode === 'reuse') {
+    if (await redeployPublishedData()) {
+      await setStepOutput('skip', 'false');
+      return;
+    }
+    warn('Nothing to reuse — generating data instead.');
+  }
+  const force = dataMode === 'regenerate' || dataMode === 'reuse';
+
   const generatedAt = new Date().toISOString();
   const periodFrom = new Date(Date.now() - 60 * 60_000).toISOString();
   // 48h rather than 36h so a run near either edge of the publication window
@@ -79,28 +91,25 @@ async function main() {
     // The gate compares fetched coverage against published coverage, so both
     // are needed before deciding — fetch them together.
     const [published, fetched] = await Promise.all([
-      FORCE ? Promise.resolve({ ok: false }) : readPublished(),
+      force ? Promise.resolve({ ok: false }) : readPublished(),
       fetchRates({ product: PRODUCT, region: REGION, periodFrom, periodTo }),
     ]);
     rates = fetched;
     log(`Got ${rates.length} rate slots`);
 
     const decision = decideBuild({
-      force: FORCE,
+      force,
       publishedOk: published.ok,
       publishedEndMs: published.lastRealEndMs ?? 0,
       fetchedEndMs: lastRealSlotEnd(rates),
       nowMs: Date.now(),
+      lastAttempt: LAST_ATTEMPT,
     });
 
     if (!decision.build) {
       await setStepOutput('skip', 'true');
-      if (decision.fatal) {
+      if (decision.fatal || decision.alarm) {
         console.log(`::error::${decision.reason}`);
-        process.exit(1);
-      }
-      if (LAST_ATTEMPT) {
-        console.log(`::error::${decision.reason} — this was the last scheduled attempt of the day.`);
         process.exit(1);
       }
       console.log(`::notice::${decision.reason} — skipping deploy, the next scheduled run will retry.`);
@@ -202,17 +211,64 @@ async function main() {
     stats,
   };
 
+  await writeSite(JSON.stringify(payload), generatedAt);
+}
+
+// Assemble dist/: the site source, an sw.js stamped so caches bust, and the
+// data.json body. Shared by the generate and reuse paths — reuse passes the
+// already-published body through verbatim, but still stamps a fresh version so
+// the new code actually reaches browsers.
+async function writeSite(dataJson, versionSource) {
   await mkdir(DIST, { recursive: true });
   await cp(SRC, DIST, { recursive: true });
 
-  const version = generatedAt.replace(/[-:]/g, '').replace(/\..*/, '');
+  const version = versionSource.replace(/[-:]/g, '').replace(/\..*/, '');
   const swPath = resolve(DIST, 'sw.js');
   const sw = await readFile(swPath, 'utf8');
   await writeFile(swPath, sw.replaceAll('%VERSION%', version));
   log(`Stamped sw.js with version ${version}`);
 
-  await writeFile(resolve(DIST, 'data.json'), JSON.stringify(payload));
+  await writeFile(resolve(DIST, 'data.json'), dataJson);
   log(`Wrote ${resolve(DIST, 'data.json')}`);
+}
+
+// Redeploy the published data.json unchanged. Returns false if there is nothing
+// to reuse, so the caller can fall back to generating rather than shipping a
+// site with no data at all.
+async function redeployPublishedData() {
+  let body;
+  try {
+    const res = await fetch(CACHE_URL, { cache: 'no-store' });
+    if (!res.ok) {
+      warn(`Cannot reuse published data: ${CACHE_URL} returned HTTP ${res.status}`);
+      return false;
+    }
+    body = await res.text();
+  } catch (err) {
+    warn('Cannot reuse published data:', err.message);
+    return false;
+  }
+
+  let coverageEndMs = 0;
+  try {
+    coverageEndMs = lastRealSlotEnd(JSON.parse(body)?.rates);
+  } catch {
+    warn('Published data.json is not valid JSON — regenerating instead.');
+    return false;
+  }
+  if (!coverageEndMs) {
+    warn('Published data.json has no real rates — regenerating instead.');
+    return false;
+  }
+  const hoursAhead = coverageHoursAhead(coverageEndMs, Date.now());
+  if (hoursAhead <= 0) {
+    warn(`Reused data has already elapsed (ended ${new Date(coverageEndMs).toISOString()}) — deploying it anyway; the next scheduled run will refresh it.`);
+  } else {
+    log(`Reusing published data (covers ${hoursAhead.toFixed(1)}h ahead, to ${new Date(coverageEndMs).toISOString()})`);
+  }
+
+  await writeSite(body, new Date().toISOString());
+  return true;
 }
 
 function generateFixturePredictedSlots(realRates) {
