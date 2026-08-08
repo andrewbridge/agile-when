@@ -10,10 +10,17 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      force:
-        description: 'Build and deploy even if no newer rate data is available'
-        type: boolean
-        default: false
+      data:
+        description: 'Data generation step'
+        type: choice
+        default: reuse
+        options:
+          # Skip generation; redeploy the published data.json with the new code.
+          - reuse
+          # Always regenerate, even if there is nothing new.
+          - regenerate
+          # As a scheduled run: only rebuild if new rate data is available.
+          - conditional
 
 permissions:
   contents: read
@@ -31,8 +38,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
       - id: build
@@ -43,12 +50,13 @@ jobs:
           REGION_CODE: J
           REGION_NAME: South East England
           PRODUCT_CODE: AGILE-24-10-01
-          # Only the last cron of the day sets this, so a publication window
-          # that passed with no new rates fails loudly instead of skipping
-          # quietly four times over.
+          # Only the last cron of the day sets this. It escalates a skip to a
+          # failure only when coverage is genuinely short — "nothing new
+          # arrived in this run" is the healthy end state, not a problem.
           LAST_ATTEMPT: ${{ github.event.schedule == '5 19 * * *' }}
-        # A push is a code change that should ship regardless of rate data.
-        run: node scripts/build.mjs ${{ (inputs.force || github.event_name == 'push') && '--force' || '' }}
+        # A push ships code, so it reuses the published data rather than waiting
+        # on (or being blocked by) the upstream data services.
+        run: node scripts/build.mjs --data=${{ inputs.data || (github.event_name == 'push' && 'reuse' || 'conditional') }}
       - if: ${{ steps.build.outputs.skip != 'true' }}
         uses: actions/configure-pages@v5
       - if: ${{ steps.build.outputs.skip != 'true' }}

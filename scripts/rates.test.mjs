@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lastRealSlotEnd, decideBuild } from './rates.mjs';
+import { lastRealSlotEnd, decideBuild, coverageHoursAhead } from './rates.mjs';
 
 const at = (iso) => new Date(iso).getTime();
 const slot = (from, to, extra = {}) => ({ from, to, pence: 10, ...extra });
@@ -110,4 +110,66 @@ test('the first cron to see tomorrow\'s rates builds', () => {
     nowMs: at('2026-08-07T16:05:00Z'),
   });
   assert.equal(decision.build, true);
+});
+
+test('coverageHoursAhead measures forward coverage, negative once elapsed', () => {
+  assert.equal(coverageHoursAhead(at('2026-08-08T12:00:00Z'), at('2026-08-08T00:00:00Z')), 12);
+  assert.equal(coverageHoursAhead(at('2026-08-08T00:00:00Z'), at('2026-08-08T02:00:00Z')), -2);
+});
+
+// The last-attempt alarm. Escalating a skip must depend on whether we actually
+// have the upcoming day's rates — not on whether this particular run found
+// something new, which on a healthy day it never does.
+
+test('last attempt with a full day of coverage skips quietly', () => {
+  // The real 2026-08-08 19:36 run: the 16:46 build had already published rates
+  // through 2026-08-09T22:00Z. This failed the workflow every day.
+  const decision = decideBuild({
+    ...base,
+    publishedEndMs: at('2026-08-09T22:00:00Z'),
+    fetchedEndMs: at('2026-08-09T22:00:00Z'),
+    nowMs: at('2026-08-08T19:36:00Z'),
+    lastAttempt: true,
+  });
+  assert.equal(decision.build, false);
+  assert.notEqual(decision.alarm, true);
+});
+
+test('last attempt with only tonight\'s rates raises the alarm', () => {
+  // 19:05 with coverage ending at 23:00 UK tonight — the publication window
+  // really did pass without tomorrow's rates.
+  const decision = decideBuild({
+    ...base,
+    publishedEndMs: at('2026-08-08T22:00:00Z'),
+    fetchedEndMs: at('2026-08-08T22:00:00Z'),
+    nowMs: at('2026-08-08T18:05:00Z'),
+    lastAttempt: true,
+  });
+  assert.equal(decision.build, false);
+  assert.equal(decision.alarm, true);
+  assert.match(decision.reason, /Publication window passed/);
+});
+
+test('short coverage on an earlier cron skips without alarming', () => {
+  const decision = decideBuild({
+    ...base,
+    publishedEndMs: at('2026-08-08T22:00:00Z'),
+    fetchedEndMs: at('2026-08-08T22:00:00Z'),
+    nowMs: at('2026-08-08T18:05:00Z'),
+    lastAttempt: false,
+  });
+  assert.equal(decision.build, false);
+  assert.notEqual(decision.alarm, true);
+});
+
+test('a partial publication at the last attempt builds without alarming', () => {
+  const decision = decideBuild({
+    ...base,
+    publishedEndMs: at('2026-08-08T22:00:00Z'),
+    fetchedEndMs: at('2026-08-09T02:00:00Z'),
+    nowMs: at('2026-08-08T18:05:00Z'),
+    lastAttempt: true,
+  });
+  assert.equal(decision.build, true);
+  assert.notEqual(decision.alarm, true);
 });

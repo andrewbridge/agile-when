@@ -57,6 +57,17 @@ export function lastRealSlotEnd(rates) {
 
 const iso = (ms) => new Date(ms).toISOString();
 
+// Forward coverage expected once the day's rates have been published. At the
+// last cron (19:05 UK) a published day puts coverage ~28h out, while a day that
+// never published leaves only ~4h, so 12h separates the two with wide margin
+// either side. A duration rather than a UK calendar boundary: no timezone
+// maths, and nothing to go wrong across BST/GMT transitions.
+const MIN_COVERAGE_HOURS = 12;
+
+export function coverageHoursAhead(endMs, nowMs) {
+  return (endMs - nowMs) / 3600_000;
+}
+
 // Decide whether a freshly fetched set of rates is worth publishing, by asking
 // whether it reaches further than what the live site already has.
 //
@@ -66,7 +77,7 @@ const iso = (ms) => new Date(ms).toISOString();
 // fails for hours at a stretch through no fault of the build — every run
 // between midnight and the publication window is demanding data that cannot
 // exist yet.
-export function decideBuild({ force, publishedOk, publishedEndMs, fetchedEndMs, nowMs }) {
+export function decideBuild({ force, publishedOk, publishedEndMs, fetchedEndMs, nowMs, lastAttempt }) {
   if (!fetchedEndMs) {
     // Not "nothing new" but "nothing at all" — a real breakage worth failing on,
     // and never something to overwrite good published data with.
@@ -83,6 +94,19 @@ export function decideBuild({ force, publishedOk, publishedEndMs, fetchedEndMs, 
   }
   if (publishedEndMs <= nowMs) {
     return { build: true, reason: `Live data is exhausted (ends ${iso(publishedEndMs)}) — rebuilding rather than leaving the site stale` };
+  }
+  // Nothing new — which is the normal, healthy state once the day's rates have
+  // already been ingested by an earlier run. Only escalate on the final attempt
+  // of the day, and only when coverage is genuinely short: "nothing arrived in
+  // this run" is not evidence of a problem, "we still have no rates for the
+  // upcoming day" is.
+  const coverage = coverageHoursAhead(Math.max(publishedEndMs, fetchedEndMs), nowMs);
+  if (lastAttempt && coverage < MIN_COVERAGE_HOURS) {
+    return {
+      build: false,
+      alarm: true,
+      reason: `Publication window passed without new rates — coverage only reaches ${iso(publishedEndMs)} (${coverage.toFixed(1)}h ahead, expected at least ${MIN_COVERAGE_HOURS}h). Octopus may not have published today.`,
+    };
   }
   return { build: false, reason: `No newer rate data — live data already covers to ${iso(publishedEndMs)}` };
 }
